@@ -34,25 +34,13 @@ export function normalizeCanvasData(data: any) {
     userSettings: {
       ...DEFAULT_SETTINGS,
       ...existingUserSettings
-    }
+    },
+    uniqueId: existingPad.uniqueId || crypto.randomUUID(),
+    displayName: existingPad.displayName || "Untitled",
+    pads: existingPad.pads || [],
+    parentUniqueId: existingPad.parentUniqueId || null,
   };
 
-  if (!appState.uniqueId) {
-    appState.uniqueId = crypto.randomUUID();
-  }
-
-  if (!appState.displayName) {
-    appState.displayName = "Untitled";
-  }
-
-  if (!appState.pads) {
-    appState.pads = [];
-  }
-
-  if (!appState.parentUniqueId) {
-    appState.parentUniqueId = "";
-  }
-  
   // Reset collaborators (https://github.com/excalidraw/excalidraw/issues/8637)
   appState.collaborators = new Map();
   
