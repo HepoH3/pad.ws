@@ -1,6 +1,7 @@
 import os
 from contextlib import asynccontextmanager
 from typing import Optional
+import asyncio
 
 from fastapi import FastAPI, Request, Depends
 from fastapi.responses import FileResponse
@@ -8,6 +9,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 import posthog
+from alembic.config import Config
+from alembic import command
+
+from db import init_db
+from config import STATIC_DIR, ASSETS_DIR
+from dependencies import SessionData, optional_auth
+from routers.auth import auth_router
+from routers.canvas import canvas_router
+from routers.user import user_router
+from routers.workspace import workspace_router
 
 load_dotenv()
 
@@ -18,17 +29,31 @@ if POSTHOG_API_KEY:
     posthog.project_api_key = POSTHOG_API_KEY
     posthog.host = POSTHOG_HOST
 
-from db import init_db
-from config import STATIC_DIR, ASSETS_DIR
-from dependencies import SessionData, optional_auth
-from routers.auth import auth_router
-from routers.canvas import canvas_router
-from routers.user import user_router
-from routers.workspace import workspace_router
+async def run_migrations():
+    # Get the absolute path to the alembic.ini file
+    base_path = os.path.dirname(os.path.abspath(__file__))
+    config_path = os.path.join(base_path, "database", "alembic.ini")
+    
+    # Create the config object
+    alembic_config = Config(config_path)
+    
+    # Override the script_location to point to the correct directory
+    script_location = os.path.join(base_path, "database", "migrations")
+    alembic_config.set_main_option("script_location", script_location)
+    
+    # Run the migration
+    await asyncio.to_thread(command.upgrade, alembic_config, "head")
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    print("Initializing database connection...")
     await init_db()
+    print("Running migrations...")
+    try:
+        await run_migrations()
+        print("Migrations completed successfully")
+    except Exception as e:
+        print(f"Error running migrations: {e}")
     print("Database connection established successfully")
     yield
 

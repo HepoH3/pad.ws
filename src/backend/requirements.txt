@@ -8,3 +8,5 @@ PyJWT
 requests
 sqlalchemy
 posthog
+alembic
+psycopg2-binary
